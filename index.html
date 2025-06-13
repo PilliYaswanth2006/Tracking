@@ -1,0 +1,254 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Study Tracker Web App</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #121212;
+      color: #f0f0f0;
+    }
+
+    .container {
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    .chapter {
+      margin-bottom: 10px;
+    }
+
+    .topic-header {
+      background-color: #1e1e1e;
+      padding: 10px;
+      cursor: pointer;
+      border: 1px solid #333;
+      border-radius: 5px;
+      margin-bottom: 5px;
+    }
+
+    .topic-header.gray {
+      background-color: #444;
+    }
+
+    .topic-header.yellow {
+      background-color: #996c00;
+    }
+
+    .topic-header.green {
+      background-color: #2e7d32;
+    }
+
+    .checkbox-group {
+      padding-left: 20px;
+      display: none;
+    }
+
+    .progress-container {
+      margin: 20px 0;
+    }
+
+    .progress-bar {
+      height: 20px;
+      background-color: #333;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background-color: #4caf50;
+      text-align: center;
+      line-height: 20px;
+      color: #fff;
+    }
+
+    label {
+      display: block;
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📚 Study Tracker</h1>
+    <div class="progress-container">
+      <div class="progress-bar">
+        <div id="globalProgress" class="progress-fill" style="width: 0%;">0%</div>
+      </div>
+      <div id="progressText">Progress: 0/0 checkboxes completed (0%)</div>
+    </div>
+    <div id="studyContent"></div>
+  </div>
+
+  <script>
+  const DB_NAME = "StudyTrackerDB";
+const DB_STORE = "checkboxes";
+let db;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      db = request.result;
+      resolve(db);
+    };
+    request.onupgradeneeded = (e) => {
+      db = e.target.result;
+      if (!db.objectStoreNames.contains(DB_STORE)) {
+        db.createObjectStore(DB_STORE);
+      }
+    };
+  });
+}
+
+function saveCheckboxState(key, state) {
+  const tx = db.transaction(DB_STORE, "readwrite");
+  const store = tx.objectStore(DB_STORE);
+  store.put(state, key);
+}
+
+function loadCheckboxState(key) {
+  return new Promise((resolve) => {
+    const tx = db.transaction(DB_STORE, "readonly");
+    const store = tx.objectStore(DB_STORE);
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result || []);
+  });
+}
+
+    const CHECKBOX_OPTIONS = [
+      "Reading",
+      "Reading Aloud",
+      "Practicing Questions",
+      "Case Study / Practical",
+      "Wanted Doubts",
+      "Teaching (Mistake Observation)",
+      "Notes",
+      "Chapter Revision / Revision 1",
+      "Class Revision / Revision 2",
+      "Final Revision / Revision 3",
+    ];
+
+    const data = { "Class 6": { "History – Our Pasts – I": [ "What, Where, How and When?", "On the Trail of the Earliest People", "From Gathering to Growing Food", "In the Earliest Cities", "What Books and Burials Tell Us", "Kingdoms, Kings and an Early Republic", "New Questions and Ideas", "Ashoka, The Emperor Who Gave Up War", "Vital Villages, Thriving Towns", "Traders, Kings and Pilgrims", "New Empires and Kingdoms", "Buildings, Paintings and Books" ], "Geography – The Earth Our Habitat": [ "The Earth in the Solar System", "Globe: Latitudes and Longitudes", "Motions of the Earth", "Maps", "Major Domains of the Earth", "Major Landforms of the Earth", "Our Country – India", "India: Climate, Vegetation and Wildlife" ], "Civics – Social and Political Life – I": [ "Understanding Diversity", "Diversity and Discrimination", "What is Government?", "Key Elements of a Democratic Government", "Panchayati Raj", "Rural Administration", "Urban Administration", "Rural Livelihoods", "Urban Livelihoods" ] }, "Class 7": { "History – Our Pasts – II": [ "Tracing Changes Through a Thousand Years", "New Kings and Kingdoms", "The Delhi Sultans", "The Mughal Empire", "Rulers and Buildings", "Towns, Traders and Craftspersons", "Tribes, Nomads and Settled Communities", "Devotional Paths to the Divine", "The Making of Regional Cultures", "Eighteenth-Century Political Formations" ], "Geography – Our Environment": [ "Environment", "Inside Our Earth", "Our Changing Earth", "Air", "Water", "Natural Vegetation and Wildlife", "Human Environment – Settlement, Transport and Communication", "Human-Environment Interactions – The Tropical and the Subtropical Region", "Life in the Temperate Grasslands", "Life in the Deserts" ], "Civics – Social and Political Life – II": [ "On Equality", "Role of the Government in Health", "How the State Government Works", "Growing up as Boys and Girls", "Women Change the World", "Understanding Media", "Understanding Advertising", "Markets Around Us", "A Shirt in the Market" ] }, "Class 8": { "History – Our Pasts – III": [ "How, When and Where", "From Trade to Territory: The Company Establishes Power", "Ruling the Countryside", "Tribals, Dikus and the Vision of a Golden Age", "When People Rebel: 1857 and After", "Colonialism and the City", "Weavers, Iron Smelters and Factory Owners", "Civilising the 'Native', Educating the Nation", "Women, Caste and Reform", "The Changing World of Visual Arts", "The Making of the National Movement: 1870s–1947", "India After Independence" ], "Geography – Resources and Development": [ "Resources", "Land, Soil, Water, Natural Vegetation and Wildlife Resources", "Mineral and Power Resources", "Agriculture", "Industries", "Human Resources" ], "Civics – Social and Political Life – III": [ "The Indian Constitution", "Understanding Secularism", "Why Do We Need a Parliament?", "Understanding Laws", "Judiciary", "Understanding Our Criminal Justice System", "Understanding Marginalisation", "Confronting Marginalisation", "Public Facilities", "Law and Social Justice" ] }, "Class 9": { "History – India and the Contemporary World – I": [ "The French Revolution", "Socialism in Europe and the Russian Revolution", "Nazism and the Rise of Hitler", "Forest Society and Colonialism", "Pastoralists in the Modern World", "Peasants and Farmers" ], "Geography – Contemporary India – I": [ "India – Size and Location", "Physical Features of India", "Drainage", "Climate", "Natural Vegetation and Wildlife", "Population" ], "Civics – Democratic Politics – I": [ "What is Democracy? Why Democracy?", "Constitutional Design", "Electoral Politics", "Working of Institutions", "Democratic Rights" ], "Economics – Economics – I": [ "The Story of Village Palampur", "People as Resource", "Poverty as a Challenge", "Food Security in India" ] }, "Class 10": { "History – India and the Contemporary World – II": [ "The Rise of Nationalism in Europe", "Nationalism in India", "The Making of a Global World", "The Age of Industrialisation", "Print Culture and the Modern World" ], "Geography – Contemporary India – II": [ "Resources and Development", "Forest and Wildlife Resources", "Water Resources", "Agriculture", "Minerals and Energy Resources", "Manufacturing Industries", "Lifelines of National Economy" ], "Civics – Democratic Politics – II": [ "Power Sharing", "Federalism", "Gender, Religion and Caste", "Political Parties", "Outcomes of Democracy", "Challenges to Democracy" ], "Economics – Understanding Economic Development": [ "Development", "Sectors of the Indian Economy", "Money and Credit", "Globalisation and the Indian Economy", "Consumer Rights" ] } }
+
+
+    const studyContent = document.getElementById("studyContent");
+    let totalCheckboxes = 0;
+    let checkedCheckboxes = 0;
+
+    function createCheckbox(topicId, index, savedState) {
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.dataset.topicId = topicId;
+  checkbox.dataset.index = index;
+
+  const label = document.createElement("label");
+  label.appendChild(checkbox);
+  label.append(" " + CHECKBOX_OPTIONS[index]);
+
+  if (savedState.includes(index)) {
+    checkbox.checked = true;
+  }
+
+  checkbox.addEventListener("change", () => {
+    const checkboxes = document.querySelectorAll(`input[data-topic-id='${topicId}']`);
+    const newState = Array.from(checkboxes)
+      .map((cb, i) => cb.checked ? i : null)
+      .filter(i => i !== null);
+    saveCheckboxState(topicId, newState);
+    updateProgress();
+  });
+
+  return label;
+}
+
+
+    function updateProgress() {
+      const checkboxes = document.querySelectorAll("input[type=checkbox]");
+      checkedCheckboxes = Array.from(checkboxes).filter((cb) => cb.checked).length;
+      totalCheckboxes = checkboxes.length;
+      const percent = totalCheckboxes ? Math.round((checkedCheckboxes / totalCheckboxes) * 100) : 0;
+      document.getElementById("globalProgress").style.width = percent + "%";
+      document.getElementById("globalProgress").innerText = percent + "%";
+      document.getElementById("progressText").innerText = `Progress: ${checkedCheckboxes}/${totalCheckboxes} checkboxes completed (${percent}%)`;
+
+      document.querySelectorAll(".topic-header").forEach((header) => {
+        const topicId = header.dataset.topicId;
+        const checks = document.querySelectorAll(`input[data-topic-id='${topicId}']`);
+        const completed = Array.from(checks).filter(cb => cb.checked).length;
+
+        header.classList.remove("gray", "yellow", "green");
+        if (completed === 0) header.classList.add("gray");
+        else if (completed < 10) header.classList.add("yellow");
+        else header.classList.add("green");
+        header.querySelector(".status").innerText = `[${completed}/10 Completed ✅]`;
+      });
+    }
+
+    async function createStudyStructure() {
+  await openDB(); // <-- Important
+
+  let topicCounter = 0;
+  for (const [className, subjects] of Object.entries(data)) {
+    const classHeader = document.createElement("h2");
+    classHeader.innerText = className;
+    studyContent.appendChild(classHeader);
+
+    for (const [subject, topics] of Object.entries(subjects)) {
+      const subjectHeader = document.createElement("h3");
+      subjectHeader.innerText = subject;
+      studyContent.appendChild(subjectHeader);
+
+      for (const topic of topics) {
+        const topicId = `topic-${topicCounter++}`;
+        const header = document.createElement("div");
+        header.className = "topic-header gray";
+        header.dataset.topicId = topicId;
+        header.innerHTML = `<strong>${topic}</strong> – <span class="status">[0/10 Completed ✅]</span>`;
+
+        const checkboxGroup = document.createElement("div");
+        checkboxGroup.className = "checkbox-group";
+
+        const savedState = await loadCheckboxState(topicId);
+        let completedCount = 0;
+
+        for (let i = 0; i < 10; i++) {
+          const checkboxLabel = createCheckbox(topicId, i, savedState);
+          if (savedState.includes(i)) completedCount++;
+          checkboxGroup.appendChild(checkboxLabel);
+        }
+
+        if (completedCount === 0) header.classList.add("gray");
+        else if (completedCount < 10) header.classList.add("yellow");
+        else header.classList.add("green");
+        header.querySelector(".status").innerText = `[${completedCount}/10 Completed ✅]`;
+
+        header.addEventListener("click", () => {
+          checkboxGroup.style.display = checkboxGroup.style.display === "block" ? "none" : "block";
+        });
+
+        studyContent.appendChild(header);
+        studyContent.appendChild(checkboxGroup);
+      }
+    }
+  }
+}
+
+
+    (async () => {
+  await createStudyStructure();
+  updateProgress();
+})();
+
+  </script>
+</body>
+</html>
